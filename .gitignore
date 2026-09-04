@@ -8,3 +8,11 @@ output.csv
 dist/
 build/
 *.egg-info/
+.env
+.venv/
+venv/
+*.egg
+.coverage
+htmlcov/
+.DS_Store
+Thumbs.db

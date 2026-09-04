@@ -37,36 +37,64 @@
 
 ## 💻 CLI Quickstart & Usage
 
-### 1. Guided Interactive Mode
+### Installation
 ```bash
-python cli.py
+pip install -e .
 ```
 
-### 2. Direct Parameterized Evaluation
+### Environment Setup
+
+The audit trail requires a secure HMAC-SHA256 key. Generate one and set it:
 ```bash
-python cli.py --task-id <value> --target <value> --primary <value> --secondary <value>
+# Generate a secure key
+export AUDIT_SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
 ```
 
-### Parameter Reference
-- `--task-id`: Specifies input measurement or parameter value.
-- `--target`: Specifies input measurement or parameter value.
-- `--primary`: Specifies input measurement or parameter value.
-- `--secondary`: Specifies input measurement or parameter value.
-- `--critical`: Specifies input measurement or parameter value.
-- `--status`: Specifies input measurement or parameter value.
-- `--input`: Specifies input measurement or parameter value.
-- `--output`: Specifies input measurement or parameter value.
+### 1. Run a Single Audit
+```bash
+python cli.py audit --task-id TASK-001 --target SPECIMEN-01 --primary 28.5 --secondary 14.2 --status DISCORDANT
+```
+
+### 2. Batch Process a CSV File
+```bash
+python cli.py batch -i sample.csv -o results.csv
+```
+
+### 3. Query the Supervisory Chat
+```bash
+python cli.py chat "What is the system status?"
+```
+
+### 4. Verify Audit Trail Integrity
+```bash
+python cli.py verify-audit
+```
+
+### 5. Launch FastAPI REST Server
+```bash
+python cli.py serve --host 127.0.0.1 --port 8000
+```
+
+### CLI Commands
+
+| Command | Description |
+|:--------|:------------|
+| `audit` | Run a single task evaluation across specialized workers |
+| `batch` | Batch process CSV records (input/output restricted to CWD) |
+| `chat` | Query the air-gapped supervisory assistant |
+| `verify-audit` | Verify HMAC-SHA256 audit trail cryptographic integrity |
+| `serve` | Launch FastAPI REST API server |
 
 ### Input Data Schema
 
 | Field | Description | Requirement |
 |:------|:------------|:------------|
-| `case_id` | Parameter / observation metric | Required |
-| `patient_synthetic_id` | Parameter / observation metric | Required |
-| `metric_primary` | Parameter / observation metric | Required |
-| `metric_secondary` | Parameter / observation metric | Required |
-| `is_stat` | Parameter / observation metric | Required |
-| `status_flag` | Parameter / observation metric | Required |
+| `task_id` | Unique task identifier (max 128 chars) | Required |
+| `target_identifier` | Specimen or target key (max 128 chars) | Required |
+| `primary_metric` | Primary measurement value | Required |
+| `secondary_metric` | Secondary kinetic/confidence score | Optional (default 0.0) |
+| `status_descriptor` | Status code or phenotype (max 64 chars) | Optional (default "NOMINAL") |
+| `is_critical_flag` | Emergency escalation trigger | Optional (default false) |
 
 ---
 
@@ -82,16 +110,17 @@ python cli.py --task-id <value> --target <value> --primary <value> --secondary <
 
 ## 🧪 Testing & Verification
 
-Run the automated test suite:
+Run the automated test suite (requires `AUDIT_SECRET_KEY`):
 
 ```bash
+export AUDIT_SECRET_KEY="test-key-for-development-only"
 pytest -v
 ```
 
 Execute high-throughput batch simulation benchmarks:
 
 ```bash
-python simulator.py --tasks 1000 --concurrency 8
+python simulator.py 100
 ```
 
 ---

@@ -4,12 +4,31 @@ Command Line Interface for Fusion Transcript Oncology Agent.
 import argparse
 import csv
 import json
+import os
 import sys
+from pathlib import Path
 from agents.models import SystemTaskPayload
 from agents.supervisor import SystemSupervisor
 from agents.base import AuditLogger
 
 supervisor = SystemSupervisor(model_provider="mock")
+
+
+def _validate_safe_path(path_str: str, must_exist: bool = False) -> Path:
+    """Validate a file path for safety: reject traversal and ensure it stays within CWD."""
+    try:
+        path = Path(path_str).resolve()
+    except (OSError, ValueError) as e:
+        raise argparse.ArgumentTypeError(f"Invalid path '{path_str}': {e}")
+    cwd = Path.cwd().resolve()
+    if not str(path).startswith(str(cwd)):
+        raise argparse.ArgumentTypeError(
+            f"Path '{path_str}' is outside the working directory. "
+            "Batch operations are restricted to the current directory for security."
+        )
+    if must_exist and not path.is_file():
+        raise argparse.ArgumentTypeError(f"Input file '{path_str}' does not exist.")
+    return path
 
 
 def main(argv=None):
@@ -80,10 +99,16 @@ def main(argv=None):
         return 0
 
     if args.command == "batch":
-        with open(args.input, mode="r", encoding="utf-8-sig") as f:
-            reader = csv.DictReader(f)
-            fieldnames = list(reader.fieldnames or [])
-            rows = list(reader)
+        input_path = _validate_safe_path(args.input, must_exist=True)
+        output_path = _validate_safe_path(args.output, must_exist=False)
+        try:
+            with open(input_path, mode="r", encoding="utf-8-sig") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                rows = list(reader)
+        except (csv.Error, OSError) as e:
+            print(f"Error reading input file '{args.input}': {e}", file=sys.stderr)
+            return 1
 
         out_fields = fieldnames + ["overall_urgency", "integrity_status", "total_alerts", "audit_hash"]
         out_rows = []
@@ -104,10 +129,14 @@ def main(argv=None):
             row_dict["audit_hash"] = dossier.audit_hash
             out_rows.append(row_dict)
 
-        with open(args.output, mode="w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=out_fields)
-            writer.writeheader()
-            writer.writerows(out_rows)
+        try:
+            with open(output_path, mode="w", encoding="utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=out_fields)
+                writer.writeheader()
+                writer.writerows(out_rows)
+        except OSError as e:
+            print(f"Error writing output file '{args.output}': {e}", file=sys.stderr)
+            return 1
         print(f"Processed {len(out_rows)} records -> {args.output}")
         return 0
 

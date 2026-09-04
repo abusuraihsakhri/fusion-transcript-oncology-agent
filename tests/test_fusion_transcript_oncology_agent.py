@@ -3,8 +3,13 @@ Automated Pytest Test Suite for Fusion Transcript Oncology Agent.
 Domain: Clinical & Biomedical AI
 Standard: CAP / CLSI / ISO Standards
 """
+import os
 import sys
 from pathlib import Path
+
+# Set secure test key before any imports that initialize GLOBAL_AUDIT
+os.environ.setdefault("AUDIT_SECRET_KEY", "test-suite-key-fusion-transcript-oncology-agent-2026-secure")
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest

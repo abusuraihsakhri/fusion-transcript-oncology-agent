@@ -29,6 +29,8 @@ jobs:
     - name: Run Pytest Suite
       run: |
         pytest -v
+      env:
+        AUDIT_SECRET_KEY: ci-test-key-${{ github.run_id }}-${{ github.run_attempt }}-secure-audit-trail
 
     - name: Security SAST & Zero-PHI Audit
       run: |
@@ -38,3 +40,5 @@ jobs:
         assert AuditLogger.verify_integrity() is True
         print('Security & Zero-PHI Audit Passed!')
         "
+      env:
+        AUDIT_SECRET_KEY: ci-test-key-${{ github.run_id }}-${{ github.run_attempt }}-secure-audit-trail

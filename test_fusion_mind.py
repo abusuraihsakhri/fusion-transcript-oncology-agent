@@ -1,3 +1,7 @@
+import os
+# Ensure secure audit key is set before imports
+os.environ.setdefault("AUDIT_SECRET_KEY", "test-suite-key-fusion-mind-2026-secure")
+
 import pytest
 from fusion_mind import BreakpointFrameValidatorAgent, ESCATActionabilityScorerAgent, TargetedInhibitorMatcherAgent, FusionCoordinator, main
 
