@@ -19,9 +19,9 @@ class InvariantQCWorker:
                 alert_id=f"QC-{uuid.uuid4().hex[:6]}",
                 origin_worker="InvariantQCWorker",
                 urgency=UrgencyLevel.ELEVATED,
-                summary="Primary Metric Threshold Exceeded",
-                technical_details=f"Primary measurement ({payload.primary_metric:.2f}) exceeds upper reference limit (25.00) under CAP / CLSI / ISO Standards.",
-                actionable_remediation="Initiate recalibration workflow and review secondary parameters.",
+                summary="Configured Primary Threshold Exceeded",
+                technical_details=f"Primary measurement ({payload.primary_metric:.2f}) exceeds the configured demonstration threshold (25.00); not a clinical reference limit.",
+                actionable_remediation="Review the entered value and confirm the configured demonstration rule.",
             ))
         return alerts
 
@@ -37,9 +37,9 @@ class SafetyEscalationWorker:
                 alert_id=f"SAFE-{uuid.uuid4().hex[:6]}",
                 origin_worker="SafetyEscalationWorker",
                 urgency=UrgencyLevel.CRITICAL_STAT if payload.is_critical_flag else UrgencyLevel.ELEVATED,
-                summary="Critical Safety Interlock Triggered",
+                summary="Priority / Secondary Threshold Triggered",
                 technical_details=f"CriticalFlag={payload.is_critical_flag} with secondary index {payload.secondary_metric:.2f}.",
-                actionable_remediation="Execute immediate closed-loop escalation and notify attending supervisor.",
+                actionable_remediation="Review this demonstration alert; no real clinical notification is sent.",
             ))
         return alerts
 
@@ -56,8 +56,8 @@ class ProtocolConformanceWorker:
                 alert_id=f"CONF-{uuid.uuid4().hex[:6]}",
                 origin_worker="ProtocolConformanceWorker",
                 urgency=UrgencyLevel.ELEVATED,
-                summary="Protocol Conformance Discordance Detected",
-                technical_details=f"Descriptor '{payload.status_descriptor}' indicates discordance with CAP / CLSI / ISO Standards standards.",
-                actionable_remediation="Re-evaluate input specimen or rerun secondary confirmation assay.",
+                summary="Descriptor Keyword Detected",
+                technical_details=f"Descriptor '{payload.status_descriptor}' matched a demonstration keyword rule; clinical discordance is not established.",
+                actionable_remediation="Review the descriptor; use validated clinical protocols for real specimens.",
             ))
         return alerts
