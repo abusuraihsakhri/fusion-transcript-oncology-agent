@@ -4,6 +4,7 @@ Command Line Interface for Fusion Transcript Oncology Agent.
 import argparse
 import csv
 import json
+import ntpath
 import os
 import sys
 from pathlib import Path
@@ -16,12 +17,14 @@ supervisor = SystemSupervisor(model_provider="mock")
 
 def _validate_safe_path(path_str: str, must_exist: bool = False) -> Path:
     """Validate a file path for safety: reject traversal and ensure it stays within CWD."""
+    if ntpath.isabs(path_str) or Path(path_str).is_absolute():
+        raise argparse.ArgumentTypeError("Batch paths must be relative to the current directory.")
     try:
         path = Path(path_str).resolve()
     except (OSError, ValueError) as e:
         raise argparse.ArgumentTypeError(f"Invalid path '{path_str}': {e}")
     cwd = Path.cwd().resolve()
-    if not str(path).startswith(str(cwd)):
+    if not path.is_relative_to(cwd):
         raise argparse.ArgumentTypeError(
             f"Path '{path_str}' is outside the working directory. "
             "Batch operations are restricted to the current directory for security."
@@ -29,6 +32,16 @@ def _validate_safe_path(path_str: str, must_exist: bool = False) -> Path:
     if must_exist and not path.is_file():
         raise argparse.ArgumentTypeError(f"Input file '{path_str}' does not exist.")
     return path
+
+
+def _parse_csv_bool(value: str) -> bool:
+    """Interpret explicit CSV Boolean text without Python's bool('False') trap."""
+    normalized = str(value or "").strip().lower()
+    if normalized in {"true", "1", "yes", "y"}:
+        return True
+    if normalized in {"false", "0", "no", "n", ""}:
+        return False
+    raise ValueError(f"Invalid Boolean value: {value!r}")
 
 
 def main(argv=None):
@@ -110,18 +123,29 @@ def main(argv=None):
             print(f"Error reading input file '{args.input}': {e}", file=sys.stderr)
             return 1
 
-        out_fields = fieldnames + ["overall_urgency", "integrity_status", "total_alerts", "audit_hash"]
+        if "primary_metric" not in fieldnames:
+            print("CSV must contain a primary_metric column.", file=sys.stderr)
+            return 1
+        if input_path == output_path:
+            print("Input and output paths must differ.", file=sys.stderr)
+            return 1
+        extra = ["overall_urgency", "integrity_status", "total_alerts", "audit_hash"]
+        out_fields = list(dict.fromkeys(fieldnames + extra))
         out_rows = []
-        for r in rows:
-            payload = SystemTaskPayload(
-                task_id=r.get("task_id", "TASK-01"),
-                target_identifier=r.get("target_identifier", "TARGET-01"),
-                primary_metric=float(r.get("primary_metric", 15.0)),
-                secondary_metric=float(r.get("secondary_metric", 5.0)),
-                status_descriptor=r.get("status_descriptor", "NOMINAL"),
-                is_critical_flag=bool(r.get("is_critical_flag", False)),
-            )
-            dossier = supervisor.process_task(payload)
+        for index, r in enumerate(rows, start=2):
+            try:
+                payload = SystemTaskPayload(
+                    task_id=r.get("task_id") or f"TASK-{index}",
+                    target_identifier=r.get("target_identifier") or f"TARGET-{index}",
+                    primary_metric=float(r["primary_metric"]),
+                    secondary_metric=float(r.get("secondary_metric") or 0),
+                    status_descriptor=r.get("status_descriptor") or "NOMINAL",
+                    is_critical_flag=_parse_csv_bool(r.get("is_critical_flag", "")),
+                )
+                dossier = supervisor.process_task(payload)
+            except (ValueError, TypeError) as exc:
+                print(f"Invalid data on CSV line {index}: {exc}", file=sys.stderr)
+                return 1
             row_dict = dict(r)
             row_dict["overall_urgency"] = dossier.overall_urgency.value
             row_dict["integrity_status"] = dossier.integrity_status.value

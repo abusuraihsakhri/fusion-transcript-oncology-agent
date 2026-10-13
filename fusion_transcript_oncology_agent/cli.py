@@ -4,6 +4,7 @@ Command-Line Interface for FusionMind: RNA-Seq & NGS Oncogenic Gene Fusion Actio
 import argparse
 import csv
 import json
+import ntpath
 import sys
 from pathlib import Path
 from .models import ClinicalCasePayload
@@ -14,12 +15,14 @@ coordinator = FusionCoordinator()
 
 def _validate_safe_path(path_str: str, must_exist: bool = False) -> Path:
     """Validate a file path for safety: reject traversal and ensure it stays within CWD."""
+    if ntpath.isabs(path_str) or Path(path_str).is_absolute():
+        raise argparse.ArgumentTypeError("Batch paths must be relative to the current directory.")
     try:
         path = Path(path_str).resolve()
     except (OSError, ValueError) as e:
         raise argparse.ArgumentTypeError(f"Invalid path '{path_str}': {e}")
     cwd = Path.cwd().resolve()
-    if not str(path).startswith(str(cwd)):
+    if not path.is_relative_to(cwd):
         raise argparse.ArgumentTypeError(
             f"Path '{path_str}' is outside the working directory. "
             "Batch operations are restricted to the current directory for security."
@@ -27,6 +30,15 @@ def _validate_safe_path(path_str: str, must_exist: bool = False) -> Path:
     if must_exist and not path.is_file():
         raise argparse.ArgumentTypeError(f"Input file '{path_str}' does not exist.")
     return path
+
+
+def _parse_csv_bool(value: str) -> bool:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"true", "1", "yes", "y"}:
+        return True
+    if normalized in {"false", "0", "no", "n", ""}:
+        return False
+    raise ValueError(f"Invalid Boolean value: {value!r}")
 
 
 def main(argv=None):
@@ -97,18 +109,28 @@ def main(argv=None):
             print(f"Error reading input file '{args.input}': {e}", file=sys.stderr)
             return 1
 
-        out_fields = fieldnames + ["overall_status", "total_alerts", "stat_critical_alerts", "consensus_summary"]
+        if "metric_primary" not in fieldnames and "primary_metric" not in fieldnames:
+            print("CSV requires metric_primary or primary_metric.", file=sys.stderr)
+            return 1
+        if input_path == output_path:
+            print("Input and output paths must differ.", file=sys.stderr)
+            return 1
+        out_fields = list(dict.fromkeys(fieldnames + ["overall_status", "total_alerts", "stat_critical_alerts", "consensus_summary"]))
         out_rows = []
-        for r in rows:
-            case = ClinicalCasePayload(
-                case_id=r.get("case_id", "CASE-01"),
-                patient_synthetic_id=r.get("patient_synthetic_id", "SYNTH-01"),
-                primary_metric=float(r.get("metric_primary", r.get("primary_metric", 15.0))),
-                secondary_metric=float(r.get("metric_secondary", r.get("secondary_metric", 5.0))),
-                status_flag=r.get("status_flag", r.get("status_text", "NORMAL")),
-                is_stat=bool(r.get("is_stat", r.get("critical_flag", False))),
-            )
-            dossier = coordinator.process_case(case)
+        for index, r in enumerate(rows, start=2):
+            try:
+                case = ClinicalCasePayload(
+                    case_id=r.get("case_id") or f"CASE-{index}",
+                    patient_synthetic_id=r.get("patient_synthetic_id") or "SYNTH-01",
+                    primary_metric=float(r.get("metric_primary") or r.get("primary_metric")),
+                    secondary_metric=float(r.get("metric_secondary") or r.get("secondary_metric") or 0),
+                    status_flag=r.get("status_flag") or r.get("status_text") or "NORMAL",
+                    is_stat=_parse_csv_bool(r.get("is_stat") or r.get("critical_flag") or ""),
+                )
+                dossier = coordinator.process_case(case)
+            except (ValueError, TypeError) as exc:
+                print(f"Invalid data on CSV line {index}: {exc}", file=sys.stderr)
+                return 1
             row_dict = dict(r)
             row_dict["overall_status"] = dossier["overall_status"]
             row_dict["total_alerts"] = dossier["total_alerts"]

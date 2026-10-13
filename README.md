@@ -1,133 +1,63 @@
 # Fusion Transcript Oncology Agent
 
-> **Domain:** Medical Oncology & Cancer Staging Systems  
-> **Reference Guidelines & Standards:** `AJCC Cancer Staging Manual & NCCN Clinical Practice Guidelines`
+A Python and browser-based **demonstration of deterministic audit rules** for synthetic oncology-themed records. The repository includes a command-line interface, a FastAPI service, a standalone browser demo, and retained experimental/legacy modules.
 
-<div align="center">
+**Scientific limitation:** This is **not** a fusion-transcript caller, breakpoint/frame validator, molecular pathology interpretation engine, ESCAT actionability scorer, drug matcher, or clinically validated decision-support system. The primary (>25) and secondary (>12) thresholds are arbitrary software demonstration settings, not clinical reference intervals. The status keywords and priority flag are likewise illustrative. Do not use outputs for clinical diagnosis, triage, therapy selection, or research conclusions about fusion biology.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
-![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
-![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
+## Features
 
-</div>
+- Three deterministic workers: primary-threshold check, priority/secondary-threshold check, and descriptor-keyword check.
+- A supervisor combines alerts into an evaluation dossier.
+- CLI supports single evaluations, CSV batches, a deterministic mock chat, and in-process audit verification.
+- In-memory HMAC-SHA256 chained audit records, with signature and chain verification; **not** durable or independently timestamped audit storage.
+- Optional authenticated FastAPI endpoints for local development.
+- Static, responsive browser UI that executes comparable rules locally and downloads JSON. No Python runtime or API server is needed for the browser UI.
 
----
+## Browser demonstration
 
-## 📖 What It Does
+The `web/index.html` file is a self-contained static application with `web/app.js`. Open it in a browser or serve the `web/` folder with a static file server. It does not submit data to a remote API, persist input, generate HMAC signatures, or process RNA-seq/NGS files. Do not enter identifiable patient information.
 
-**Fusion Transcript Oncology Agent** is an advanced analytical and computational platform implementing Kinase Fusion (NTRK/RET/ALK/ROS1) & ESCAT Scale Matcher.
+## Python CLI
 
----
-
-## ⚙️ Key Capabilities & Algorithmic Modules
-
-### 🔬 Core Algorithmic & Evaluation Engines
-
-- **`Severity`** — dedicated module for severity evaluation and state verification.
-- **`DomainKnowledgeRegistry`**: Enterprise domain rules, guideline matrices, and evidence benchmarks.
-- **`AgentAlert`** — dedicated module for agent alert evaluation and state verification.
-- **`BreakpointFrameValidatorAgent`**: Specialized Sub-Agent 1 for fusion-transcript-oncology-agent
-- **`ESCATActionabilityScorerAgent`**: Specialized Sub-Agent 2 for fusion-transcript-oncology-agent
-- **`TargetedInhibitorMatcherAgent`**: Specialized Sub-Agent 3 for fusion-transcript-oncology-agent
-
----
-
-## 💻 CLI Quickstart & Usage
-
-### Installation
-```bash
-pip install -e .
-```
-
-### Environment Setup
-
-The audit trail requires a secure HMAC-SHA256 key. Generate one and set it:
-```bash
-# Generate a secure key
-export AUDIT_SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
-```
-
-### 1. Run a Single Audit
-```bash
-python cli.py audit --task-id TASK-001 --target SPECIMEN-01 --primary 28.5 --secondary 14.2 --status DISCORDANT
-```
-
-### 2. Batch Process a CSV File
-```bash
-python cli.py batch -i sample.csv -o results.csv
-```
-
-### 3. Query the Supervisory Chat
-```bash
-python cli.py chat "What is the system status?"
-```
-
-### 4. Verify Audit Trail Integrity
-```bash
-python cli.py verify-audit
-```
-
-### 5. Launch FastAPI REST Server
-```bash
-python cli.py serve --host 127.0.0.1 --port 8000
-```
-
-### CLI Commands
-
-| Command | Description |
-|:--------|:------------|
-| `audit` | Run a single task evaluation across specialized workers |
-| `batch` | Batch process CSV records (input/output restricted to CWD) |
-| `chat` | Query the air-gapped supervisory assistant |
-| `verify-audit` | Verify HMAC-SHA256 audit trail cryptographic integrity |
-| `serve` | Launch FastAPI REST API server |
-
-### Input Data Schema
-
-| Field | Description | Requirement |
-|:------|:------------|:------------|
-| `task_id` | Unique task identifier (max 128 chars) | Required |
-| `target_identifier` | Specimen or target key (max 128 chars) | Required |
-| `primary_metric` | Primary measurement value | Required |
-| `secondary_metric` | Secondary kinetic/confidence score | Optional (default 0.0) |
-| `status_descriptor` | Status code or phenotype (max 64 chars) | Optional (default "NOMINAL") |
-| `is_critical_flag` | Emergency escalation trigger | Optional (default false) |
-
----
-
-## 🛡️ Security & Enterprise Architecture
-
-* **Zero-PHI Outbound Interceptor:** Active AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
-* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation and state transition.
-* **Air-Gapped LLM Reasoning Adapter:** Agnostic integration for local Ollama instances (`llama3`, `mistral`), Claude 3.5 Sonnet, GPT-4o, and deterministic test mocks.
-* **Active Learning Bayesian Calibration:** Dynamic tracker updating worker reliability weights and monitoring Brier calibration drift.
-* **FastAPI & Prometheus Telemetry:** Exposes OpenAPI 3.1 REST endpoints and operational Prometheus metrics (`/metrics`).
-
----
-
-## 🧪 Testing & Verification
-
-Run the automated test suite (requires `AUDIT_SECRET_KEY`):
+Python 3.10+ is required.
 
 ```bash
-export AUDIT_SECRET_KEY="test-key-for-development-only"
-pytest -v
+python -m pip install -e ".[api,test]"
+export AUDIT_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+fusion-transcript-oncology-agent audit --task-id TASK-001 --target SYNTH-001 --primary 28.5 --secondary 14.2 --status DISCORDANT
+fusion-transcript-oncology-agent batch -i sample_task.csv -o results.csv
+fusion-transcript-oncology-agent verify-audit
+python -m pytest -q
 ```
 
-Execute high-throughput batch simulation benchmarks:
+The `sample_task.csv` file matches the primary supervisor CLI. The older `sample.csv` corresponds to the separate legacy packaged workflow (`fusion-transcript-oncology-engine` command) and uses different field names.
+
+CSV values for `is_critical_flag` accept `true/false`, `1/0`, `yes/no`, and blank as false. The input CSV must contain `primary_metric`. Input and output paths must be relative to the current working directory, and output must differ from input.
+
+## Local REST API
 
 ```bash
-python simulator.py 100
+export API_ACCESS_TOKEN="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+fusion-transcript-oncology-agent serve --host 127.0.0.1 --port 8000
+curl -H "X-API-Key: $API_ACCESS_TOKEN" -H "Content-Type: application/json" \
+  -d '{"task_id":"TASK-001","target_identifier":"SYNTH-001","primary_metric":10.0}' \
+  http://127.0.0.1:8000/api/audit
 ```
 
----
+`GET /health` does not require a token. Other endpoints (`/metrics`, `/api/audit`, `/api/chat`, `/api/audit/logs`) require the `X-API-Key` header. The API cannot serve real patient data safely without further controls such as formal authorization, encryption, retention policy, and privacy validation.
 
-## 🐳 Container Deployment
+For local Docker deployment, set both `AUDIT_SECRET_KEY` and `API_ACCESS_TOKEN` in your shell before running `docker compose up --build`. Compose binds to `127.0.0.1:8000` by default.
 
-```bash
-docker build -t fusion-transcript-oncology-agent .
-docker run -p 8000:8000 fusion-transcript-oncology-agent
-```
+## Privacy and security
+
+The browser demo keeps entered data in page memory until reset or navigation; the JSON download is user-initiated. It uses no network API, analytics, cookies, external font services, or browser storage. The Python API stores dossiers and the audit chain in process memory only; they are lost when the process exits. The rule-based PHI check detects some common identifier patterns but **does not guarantee de-identification or HIPAA compliance**. Use synthetic data only.
+
+## Implementation and testing
+
+The primary supervisor is implemented in `agents/` and `cli.py`; `fusion_transcript_oncology_agent/` and `fusion_mind.py` contain distinct retained legacy examples. Changes to threshold rules should be tested for consistency between `agents/workers.py` and `web/app.js`. CI runs Python tests on 3.10–3.12 and browser-rule tests on Node.js.
+
+All browser code uses standard HTML, CSS, and JavaScript, without a build tool or external dependencies. Recent evergreen desktop and mobile browsers are supported.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
