@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Fusion Transcript Oncology Engine API",
-    "description": "Enterprise Distributed Component Platform (Clinical & Cryptographic AI) adhering to CAP / CLSI / NIST Standards.",
-    "version": "3.0.0-ENTERPRISE",
+    "title": "Fusion Transcript Oncology Agent Demonstration API",
+    "description": "Deterministic software rule demonstration using synthetic data only. No clinical validation or genomic fusion calling.",
+    "version": "3.0.1",
     "contact": {
       "name": "Dr. Abu Suraih Sakhri",
       "url": "https://github.com/abusuraihsakhri"
@@ -22,12 +22,23 @@
     },
     "/metrics": {
       "get": {
-        "summary": "Prometheus operational metrics",
+        "summary": "Return current in-memory demonstration counters",
         "responses": {
           "200": {
-            "description": "Prometheus text metrics"
+            "description": "JSON counters"
+          },
+          "401": {
+            "description": "Invalid or missing API access token"
+          },
+          "503": {
+            "description": "API_ACCESS_TOKEN not configured"
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
       }
     },
     "/api/audit": {
@@ -69,14 +80,28 @@
         },
         "responses": {
           "200": {
-            "description": "Consensus dossier with HMAC signature"
+            "description": "Deterministic demonstration dossier with in-process HMAC chain reference"
+          },
+          "401": {
+            "description": "Invalid or missing API access token"
+          },
+          "422": {
+            "description": "Invalid input or possible personal identifier"
+          },
+          "503": {
+            "description": "API_ACCESS_TOKEN not configured"
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
       }
     },
     "/api/chat": {
       "post": {
-        "summary": "Air-gapped supervisory conversational assistant",
+        "summary": "Return deterministic mock response",
         "requestBody": {
           "content": {
             "application/json": {
@@ -97,18 +122,52 @@
         "responses": {
           "200": {
             "description": "Supervisory response"
+          },
+          "401": {
+            "description": "Invalid or missing API access token"
+          },
+          "422": {
+            "description": "Possible personal identifier"
+          },
+          "503": {
+            "description": "API_ACCESS_TOKEN not configured"
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
       }
     },
     "/api/audit/logs": {
       "get": {
-        "summary": "Retrieve and cryptographically verify HMAC audit trail",
+        "summary": "Return in-memory audit chain and HMAC verification result",
         "responses": {
           "200": {
             "description": "Cryptographic audit trail"
+          },
+          "401": {
+            "description": "Invalid or missing API access token"
+          },
+          "503": {
+            "description": "API_ACCESS_TOKEN not configured"
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
       }
     }
   }
