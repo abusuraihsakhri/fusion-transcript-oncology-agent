@@ -44,3 +44,30 @@ jobs:
         run: node --check web/app.js
       - name: Run browser engine tests
         run: node --test tests/web.test.cjs
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build container image
+        run: docker build -t fusion-demo-ci .
+      - name: Smoke-test protected local API
+        run: |
+          docker run -d --name fusion-demo-ci -p 127.0.0.1:8765:8000 \
+            -e AUDIT_SECRET_KEY=ci-test-only-audit-key-long-enough \
+            -e API_ACCESS_TOKEN=ci-test-only-access-token fusion-demo-ci
+          trap 'docker rm -f fusion-demo-ci' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8765/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8765/health
+          code=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d '{"task_id":"TEST","target_identifier":"SYNTH","primary_metric":10}' \
+            http://127.0.0.1:8765/api/audit)
+          test "$code" = "401"
+          curl -fsS -H "X-API-Key: ci-test-only-access-token" \
+            -H "Content-Type: application/json" \
+            -d '{"task_id":"TEST","target_identifier":"SYNTH","primary_metric":10}' \
+            http://127.0.0.1:8765/api/audit
